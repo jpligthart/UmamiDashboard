@@ -1,0 +1,29 @@
+# Copy this file to the VM as compose.yaml, next to .env and config/.
+name: umami-dashboard
+services:
+  api:
+    image: ${IMAGE_REGISTRY:?Set IMAGE_REGISTRY}/umami-dashboard-api:${IMAGE_TAG:-latest}
+    pull_policy: always
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DASHBOARD_CONFIG: /app/config/dashboard.json
+    expose: ["3000"]
+    volumes:
+      - ./config/dashboard.json:/app/config/dashboard.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  web:
+    image: ${IMAGE_REGISTRY:?Set IMAGE_REGISTRY}/umami-dashboard-web:${IMAGE_TAG:-latest}
+    pull_policy: always
+    ports: ["127.0.0.1:${DASHBOARD_PORT:-18470}:80"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

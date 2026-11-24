@@ -1,0 +1,9 @@
+{
+  "title": "Mijn overzicht",
+  "timezone": "Europe/Amsterdam",
+  "discovery": "auto",
+  "refreshSeconds": 60,
+  "cacheSeconds": 30,
+  "columns": ["active", "visitors", "pageviews", "visits", "bounce", "trend"],
+  "sites": []
+}

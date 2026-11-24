@@ -1,0 +1,39 @@
+FROM node:26.13.1-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN npm ci --workspace @dashboard/api --workspace @dashboard/shared --include-workspace-root
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+RUN npm run build -w @dashboard/shared && npm run build -w @dashboard/api
+RUN npm prune --omit=dev --workspace @dashboard/api --workspace @dashboard/shared --include-workspace-root
+
+FROM node:26.13.1-bookworm-slim AS runner
+ARG IMAGE_SOURCE=https://example.invalid/umami-dashboard
+ARG IMAGE_VERSION=0.1.0
+ARG IMAGE_REVISION=unknown
+ARG IMAGE_CREATED=2026-11-24T00:00:00Z
+LABEL org.opencontainers.image.title="Umami Dashboard API" \
+      org.opencontainers.image.description="Read-only Umami analytics dashboard API" \
+      org.opencontainers.image.source=$IMAGE_SOURCE \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.version=$IMAGE_VERSION \
+      org.opencontainers.image.revision=$IMAGE_REVISION \
+      org.opencontainers.image.created=$IMAGE_CREATED
+WORKDIR /app
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DASHBOARD_CONFIG=/app/config/dashboard.json
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=node:node /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build --chown=node:node /app/packages/shared/dist ./packages/shared/dist
+COPY --chown=node:node config ./config
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["npm", "run", "start", "--workspace", "@dashboard/api"]

@@ -1,0 +1,15 @@
+{
+  "name": "@dashboard/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --import tsx src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": { "@dashboard/shared": "*", "luxon": "^3.7.2", "zod": "^4.1.12" },
+  "devDependencies": { "@types/luxon": "^3.7.1", "tsx": "^4.20.6" }
+}

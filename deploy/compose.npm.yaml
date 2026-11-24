@@ -1,0 +1,12 @@
+# Optional overlay when Nginx Proxy Manager shares this Docker host.
+# docker compose -f compose.yaml -f deploy/compose.npm.yaml up -d
+services:
+  web:
+    networks:
+      default:
+      npm:
+        aliases: [umami-dashboard]
+networks:
+  npm:
+    external: true
+    name: ${NPM_NETWORK:?Set NPM_NETWORK to the existing NPM Docker network}
