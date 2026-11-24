@@ -6,6 +6,17 @@ Er is **geen eigen database**. De API-key blijft op de server. Analytics worden 
 
 Dit dashboard heeft **geen ingebouwde login**. Houd de toepassing achter Tailscale of een tunnel met toegangscontrole, ook als de broncode publiek beschikbaar is. Zie [SECURITY.md](SECURITY.md).
 
+## Bewuste keuze: uitsluitend privétoegang
+
+De huidige productieopzet is bewust ingericht voor **privégebruik via Tailscale Serve op de VM**. Rechtstreeks draaien op het open internet is **niet bedoeld en niet veilig zonder een aanvullende toegangslaag**: de toepassing heeft zelf geen gebruikersauthenticatie.
+
+- De webcontainer bindt alleen op `127.0.0.1:${DASHBOARD_PORT:-18470}` van de VM. De API krijgt geen gepubliceerde hostpoort.
+- Docker Compose installeert of activeert Tailscale niet. Configureer Serve en beperk toegang in je tailnetbeleid afzonderlijk.
+- Verander de binding niet naar `0.0.0.0` en maak geen onbeveiligde publieke NPM-proxyhost of Tailscale Funnel aan voor dit dashboard.
+- Een tunnel met identiteitscontrole, zoals Cloudflare Tunnel met Access, blijft een alternatief voor later. Die toegangscontrole moet dan de volledige toepassing, inclusief `/api/`, beschermen.
+
+De publieke GitHub-repository deelt alleen de broncode; dat maakt de draaiende toepassing niet geschikt voor openbare toegang.
+
 ## Eerste keer starten
 
 Vereist: Docker Engine met Compose op een Linux-VM. De images gebruiken de goedgekeurde basis `node:26.13.1-bookworm-slim` en `nginx:1.30.8-alpine`.
@@ -139,6 +150,8 @@ Scherm de beheerinterface en lees-API aan de reverse-proxykant af. Publieke webs
 `DISABLE_LOGIN=1` schakelt de loginpagina uit; het is geen volledige netwerkafscherming. Bewaar een private beheerroute voor nieuwe applicaties en keybeheer. Test vóór en na een wijziging zowel een echte pageview als een nieuwe API-opvraag vanuit het dashboard. Dit project wijzigt je bestaande Umami- of NPM-configuratie niet.
 
 ## Productie met vooraf gebouwde images
+
+Ook deze productiecompose behoudt de bewuste localhost-binding voor privétoegang. Na `docker compose up -d` is het dashboard dus niet rechtstreeks via het LAN- of publieke IP bereikbaar; de afgeschermde toegangsroute moet apart worden ingericht.
 
 Stel lokaal `IMAGE_REGISTRY`, `IMAGE_TAG` en de echte Git-repository-URL in `IMAGE_SOURCE` in `.env` in. Maak een Git-commit, meld Docker aan bij je registry en push:
 
