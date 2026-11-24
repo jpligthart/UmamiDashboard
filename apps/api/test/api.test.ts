@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { DateTime } from 'luxon';
 import { createApp } from '../src/server.js';
 import { configSchema } from '../src/config.js';
-import { normalizeStats, range } from '../src/umami.js';
+import { normalizeCounts, range } from '../src/umami.js';
 
 const idA = '11111111-1111-4111-8111-111111111111';
 const idB = '22222222-2222-4222-8222-222222222222';
@@ -21,10 +21,10 @@ async function close(server: Server) {
   await new Promise<void>((resolve, reject) => { server.close(e => e ? reject(e) : resolve()); server.closeAllConnections(); });
 }
 test('normalizes v3 scalar and v2 nested stats without treating invalid data as zero', () => {
-  assert.deepEqual(normalizeStats({ ...counts, comparison: counts }), { stats: counts, previous: counts });
+  assert.deepEqual(normalizeCounts({ ...counts, comparison: counts }), counts);
   const legacy = Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, { value: v, prev: v }]));
-  assert.deepEqual(normalizeStats(legacy), { stats: counts, previous: counts });
-  assert.throws(() => normalizeStats({ visitors: 'unknown' }));
+  assert.deepEqual(normalizeCounts(legacy), counts);
+  assert.throws(() => normalizeCounts({ visitors: 'unknown' }));
 });
 test('today and rolling calendar ranges respect Amsterdam DST', () => {
   const today = range('today', 'Europe/Amsterdam', DateTime.fromISO('2026-03-29T12:00:00+02:00'));
@@ -53,7 +53,8 @@ test('real HTTP adapter paginates, authenticates, filters sites, caches and stay
     } else if (url.pathname.endsWith('/stats')) {
       assert.equal(url.searchParams.get('timezone'), 'Europe/Amsterdam');
       assert(Number(url.searchParams.get('startAt')) < Number(url.searchParams.get('endAt')));
-      value = { ...counts, comparison: counts };
+      value = { ...counts, visitors: requests.filter(p => p.includes('/stats?')).length === 1 ? 10 : 7,
+        comparison: { ...counts, visitors: 999 } };
     } else if (url.pathname.endsWith('/active')) value = { visitors: 2 };
     else if (url.pathname.endsWith('/pageviews')) value = { pageviews: [{ x: '2026-11-24 10:00:00', y: 30 }] };
     else value = [{ x: '/', y: 30 }];
@@ -68,8 +69,15 @@ test('real HTTP adapter paginates, authenticates, filters sites, caches and stay
     assert.equal(body.demo, false); assert.equal(body.sites.length, 1);
     assert.equal(body.sites[0].name, 'Mijn app'); assert.equal(body.sites[0].active, 2);
     assert.equal(body.sites[0].stats.visitors, 10);
+    assert.equal(body.sites[0].previous.visitors, 7);
     assert(!JSON.stringify(body).includes('private-test-key'));
-    assert.equal(requests.filter(p => p.includes('/stats?')).length, 1);
+    assert.equal(requests.filter(p => p.includes('/stats?')).length, 2);
+    const statQueries = requests.filter(p => p.includes('/stats?')).map(p => new URL(p, upstreamUrl).searchParams);
+    assert.equal(Number(statQueries[0].get('startAt')), body.startAt);
+    assert.equal(Number(statQueries[0].get('endAt')), body.endAt);
+    assert.equal(Number(statQueries[1].get('startAt')), body.comparison.startAt);
+    assert.equal(Number(statQueries[1].get('endAt')), body.comparison.endAt);
+    assert.equal(body.comparison.endAt, body.startAt - 1);
     assert.equal(requests.filter(p => p.startsWith('/api/websites?')).length, 2);
     const details = await fetch(`${url}/api/sites/${idA}/details?period=7d`).then(r => r.json());
     assert.equal(details.lists.length, 4); assert.equal(details.lists[0].rows[0].x, '/');

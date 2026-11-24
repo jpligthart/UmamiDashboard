@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import type { Config } from './config.js';
 import type { Dashboard, Details, Period, Site, SiteRow } from '@dashboard/shared';
-import { Umami, UpstreamError, range } from './umami.js';
+import { Umami, UpstreamError, range, comparisonRange } from './umami.js';
 import { demoDashboard, demoDetails } from './demo.js';
 
 const message = (error: unknown) => error instanceof UpstreamError ? error.message : 'Onverwacht antwoord van Umami. Controleer de versie en rechten.';
@@ -31,21 +31,24 @@ export function createApp(config: Config, options: { demo?: boolean; url?: strin
     if (options.demo) return demoDashboard(config, period);
     const available = await sites();
     const bounds = range(period, config.timezone);
+    const comparison = comparisonRange(bounds, period);
     const rows: SiteRow[] = await Promise.all(available.map(async site => {
-      const [stats, active, trend] = await Promise.allSettled([
-        client!.stats(site.id, bounds), client!.activeVisitors(site.id), client!.trend(site.id, bounds),
+      const [stats, previous, active, trend] = await Promise.allSettled([
+        client!.stats(site.id, bounds), client!.stats(site.id, comparison), client!.activeVisitors(site.id), client!.trend(site.id, bounds),
       ]);
       const warnings: string[] = [];
       if (stats.status === 'rejected') warnings.push(message(stats.reason));
+      if (previous.status === 'rejected') warnings.push('De vergelijkingsperiode kon niet worden opgehaald.');
       if (active.status === 'rejected') warnings.push('Actieve bezoekers konden niet worden opgehaald.');
       if (trend.status === 'rejected') warnings.push('De trend kon niet worden opgehaald.');
-      return { ...site, stats: stats.status === 'fulfilled' ? stats.value.stats : null,
-        previous: stats.status === 'fulfilled' ? stats.value.previous : null,
+      return { ...site, stats: stats.status === 'fulfilled' ? stats.value : null,
+        previous: previous.status === 'fulfilled' ? previous.value : null,
         active: active.status === 'fulfilled' ? active.value : null,
         trend: trend.status === 'fulfilled' ? trend.value : null, warnings };
     }));
     return { title: config.title, demo: false, timezone: config.timezone, refreshSeconds: config.refreshSeconds,
-      columns: config.columns, period, startAt: bounds.startAt, endAt: bounds.endAt, generatedAt: new Date().toISOString(), sites: rows };
+      columns: config.columns, period, startAt: bounds.startAt, endAt: bounds.endAt,
+      comparison: { startAt: comparison.startAt, endAt: comparison.endAt }, generatedAt: new Date().toISOString(), sites: rows };
   }
   async function details(id: string, period: Period): Promise<Details> {
     const available = options.demo ? demoDashboard(config, period).sites : await sites();

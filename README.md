@@ -74,13 +74,16 @@ Bijvoorbeeld, één applicatie aanpassen en een andere verbergen:
 
 Vervang de voorbeeld-ID’s door echte Umami-website-ID’s. Met `discovery: "manual"` worden alleen zichtbare ID’s uit `sites` opgehaald. Namen en domeinen komen ook dan uit Umami, tenzij je ze overschrijft. Handmatig vermelde ID’s worden bij `auto` alleen als aanpassing gebruikt en moeten zichtbaar zijn voor de key.
 
-In het dashboard kun je de periode, groep, zoekfilter, zichtbare kolommen en compactheid wijzigen. De samenvatting volgt het groeps- en zoekfilter. Selecteer een applicatie voor de grafiek en top pagina’s, verwijzers, events en landen. Er zijn geen mutatieroutes naar Umami. Voeg later een informatieblok toe via de getypeerde API in `apps/api` en de componenten in `apps/web`.
+In het dashboard kun je de periode, groep, zoekfilter, zichtbare kolommen en compactheid wijzigen. De compacte samenvattingsbalk volgt het groeps- en zoekfilter. Details staan standaard dicht: selecteer een applicatie voor de grafiek en top pagina’s, verwijzers, events en landen. Klik opnieuw op de applicatie of op ‘Details inklappen’ om terug te gaan naar alleen het overzicht. Detailopvragen worden pas gedaan wanneer je details opent. Er zijn geen mutatieroutes naar Umami. Voeg later een informatieblok toe via de getypeerde API in `apps/api` en de componenten in `apps/web`.
 
 ### Betekenis van de cijfers
 
 - Vandaag begint om middernacht in de ingestelde tijdzone; 7 en 30 dagen gebruiken een terugkijkvenster met dezelfde lokale tijd. Zomer- en wintertijd worden meegenomen.
-- Percentages per applicatie vergelijken met de vorige periode zoals Umami die berekent. Als het vorige aantal nul was, toont de interface `nieuw` of `0%`.
+- De exacte huidige en vergelijkingsperiode staan boven de tabel. Vandaag wordt vergeleken met gisteren van middernacht tot hetzelfde lokale tijdstip; rond zomer- en wintertijd kan de verstreken duur verschillen. Bij 7 en 30 dagen gebruiken we het voorafgaande kalenderdagenvenster, zonder overlappende eindpunten. De API vraagt de vergelijkingscijfers apart op en gebruikt niet de impliciete vergelijking van Umami.
+- De tabel toont zowel procentuele als absolute verschillen per applicatie. Als het vorige aantal nul was, toont de interface `nieuw` of `0%`, met het absolute verschil ernaast.
 - De grafieken tonen pageviews; actief is het aantal bezoekers in de laatste vijf minuten volgens Umami.
+- De grafieken behouden alle verstreken uur- of dagvakken, inclusief lege vakken. Bij een geslaagde tijdreeksopvraag worden door Umami weggelaten lege vakken als nul weergegeven. Een expliciete onbekende waarde blijft onbekend; een mislukte opvraag levert geen nulwaarden op. De tijdas gebruikt werkelijke tijdstippen en de ingestelde tijdzone. Dagvakken op de grenzen van het terugkijkvenster kunnen gedeeltelijk zijn.
+- De grote grafiek heeft een numerieke schaal, tijdlabels, arcering bij onbekende vakken en een uitklapbare tabel met exacte waarden. Kleine trends hebben elk een eigen schaal; ze vergelijken de vorm van een trend, niet het volume tussen applicaties. Als Umami het herhaalde uur bij wintertijd niet kan onderscheiden, tonen we dat uur als onbekend in plaats van hetzelfde aantal tweemaal te tellen.
 - Bezoekersaantallen en actieve bezoekers worden **per applicatie opgeteld**, zonder ontdubbeling tussen applicaties.
 - Bounce is `bounces / visits`; gemiddelde sessieduur is `totaltime / visits`.
 - Een mislukte meting wordt `—`, met een waarschuwing. Totalen geven aan wanneer ze gedeeltelijk zijn. Bij een mislukte verversing blijven de laatst opgehaalde cijfers herkenbaar met tijdstip en foutmelding.

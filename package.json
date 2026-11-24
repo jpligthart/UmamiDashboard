@@ -9,7 +9,7 @@
   "scripts": {
     "build": "npm run build -w @dashboard/shared && npm run build -w @dashboard/api && npm run build -w @dashboard/web",
     "typecheck": "npm run build -w @dashboard/shared && npm run typecheck --workspaces --if-present",
-    "test": "npm run build -w @dashboard/shared && npm run test -w @dashboard/api",
+    "test": "npm run build -w @dashboard/shared && npm run test -w @dashboard/api && node --import tsx --test apps/web/test/*.test.ts",
     "dev:api": "npm run build -w @dashboard/shared && npm run dev -w @dashboard/api",
     "dev:web": "npm run dev -w @dashboard/web",
     "docker:push": "node scripts/docker-push.mjs"

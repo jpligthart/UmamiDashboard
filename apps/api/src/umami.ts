@@ -1,30 +1,20 @@
 import { z } from 'zod';
-import type { Counts, Point, Period, Site } from '@dashboard/shared';
-import { DateTime } from 'luxon';
+import type { Counts, Point, TimePoint, Site } from '@dashboard/shared';
 import type { Config } from './config.js';
+import { timeline, type AnalyticsRange } from './timeline.js';
+export { range, comparisonRange } from './timeline.js';
 
 export const palette = ['#87b9ff', '#a8d5a2', '#d8b4fe', '#f5bf7b', '#75d5cf'];
 const website = z.object({ id: z.uuid(), name: z.string(), domain: z.string() });
 const point = z.object({ x: z.string().nullable(), y: z.coerce.number().finite().nonnegative() });
 export class UpstreamError extends Error {}
-export function range(period: Period, timezone: string, now = DateTime.now()) {
-  const end = now.setZone(timezone);
-  const start = period === 'today' ? end.startOf('day') : end.minus({ days: period === '7d' ? 7 : 30 });
-  return { startAt: start.toMillis(), endAt: end.toMillis(), unit: period === 'today' ? 'hour' : 'day', timezone };
-}
 const countNames = ['visitors', 'pageviews', 'visits', 'bounces', 'totaltime'] as const;
-export function normalizeStats(raw: unknown): { stats: Counts; previous: Counts } {
+export function normalizeCounts(raw: unknown): Counts {
   const data = z.record(z.string(), z.unknown()).parse(raw);
-  const comparison = data.comparison as Record<string, unknown> | undefined;
-  const stats = {} as Counts;
-  const previous = {} as Counts;
-  for (const name of countNames) {
+  return Object.fromEntries(countNames.map(name => {
     const value = data[name];
-    const old = typeof value === 'object' && value !== null ? value as { value?: unknown; prev?: unknown } : null;
-    stats[name] = z.number().finite().nonnegative().parse(old ? old.value : value);
-    previous[name] = z.number().finite().nonnegative().parse(old ? old.prev : comparison?.[name]);
-  }
-  return { stats, previous };
+    return [name, z.number().finite().nonnegative().parse(typeof value === 'object' && value !== null ? (value as { value?: unknown }).value : value)];
+  })) as unknown as Counts;
 }
 export class Umami {
   private base: string;
@@ -85,18 +75,19 @@ export class Umami {
       }).sort((a, b) => (config.sites.find(s => s.id === a.id)?.order ?? 100) -
         (config.sites.find(s => s.id === b.id)?.order ?? 100) || a.name.localeCompare(b.name, 'nl'));
   }
-  async stats(id: string, query: ReturnType<typeof range>) {
-    try { return normalizeStats(await this.get(`websites/${id}/stats`, query)); }
+  async stats(id: string, query: AnalyticsRange) {
+    try { return normalizeCounts(await this.get(`websites/${id}/stats`, query)); }
     catch (error) { if (error instanceof UpstreamError) throw error; throw new UpstreamError('Onverwachte statistieken van Umami. Controleer de Umami-versie.'); }
   }
   async activeVisitors(id: string): Promise<number> {
     return z.object({ visitors: z.number().int().nonnegative() }).parse(await this.get(`websites/${id}/active`)).visitors;
   }
-  async trend(id: string, query: ReturnType<typeof range>): Promise<Point[]> {
-    const result = z.object({ pageviews: z.array(point) }).parse(await this.get(`websites/${id}/pageviews`, query));
-    return result.pageviews.map(p => ({ x: p.x ?? '', y: p.y }));
+  async trend(id: string, query: AnalyticsRange): Promise<TimePoint[]> {
+    const result = z.object({ pageviews: z.array(z.object({ x: z.string(), y: z.number().finite().nonnegative().nullable() })) })
+      .parse(await this.get(`websites/${id}/pageviews`, query));
+    return timeline(result.pageviews, query);
   }
-  async metrics(id: string, type: string, query: ReturnType<typeof range>): Promise<Point[]> {
+  async metrics(id: string, type: string, query: AnalyticsRange): Promise<Point[]> {
     return z.array(point).parse(await this.get(`websites/${id}/metrics`, { ...query, type, limit: 7 }))
       .map(p => ({ x: p.x ?? '', y: p.y }));
   }

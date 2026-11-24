@@ -1,6 +1,7 @@
 import type { Counts, Dashboard, Details, Period, SiteRow } from '@dashboard/shared';
 import type { Config } from './config.js';
-import { palette, range } from './umami.js';
+import { palette, range, comparisonRange } from './umami.js';
+import { timeline } from './timeline.js';
 
 export function demoDashboard(config: Config, period: Period): Dashboard {
   const bounds = range(period, config.timezone);
@@ -12,11 +13,12 @@ export function demoDashboard(config: Config, period: Period): Dashboard {
     return { id: `00000000-0000-4000-8000-00000000000${index}`, name, domain, color: palette[index], group: index < 3 ? 'Applicaties' : 'Overig',
       stats, previous: Object.fromEntries(Object.entries(stats).map(([k, v]) => [k, Math.round(v / (1.12 + index * .04))])) as unknown as Counts,
       active: [4, 2, 0, 1, 0][index], warnings: [],
-      trend: Array.from({ length: 24 }, (_, i) => ({ x: String(i), y: Math.round((Math.sin(i * .7 + index) + 1.4) * n * 12 * factor) })),
+      trend: timeline([], bounds).map((p, i) => ({ ...p, y: Math.round((Math.sin(i * .7 + index) + 1.4) * n * 12 * factor) })),
     };
   });
   return { title: config.title, demo: true, timezone: config.timezone, refreshSeconds: config.refreshSeconds,
-    columns: config.columns, period, startAt: bounds.startAt, endAt: bounds.endAt, generatedAt: new Date().toISOString(), sites };
+    columns: config.columns, period, startAt: bounds.startAt, endAt: bounds.endAt,
+    comparison: comparisonRange(bounds, period), generatedAt: new Date().toISOString(), sites };
 }
 export function demoDetails(siteId: string, period: Period): Details {
   return { siteId, period, lists: [
