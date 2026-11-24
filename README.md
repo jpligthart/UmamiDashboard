@@ -4,6 +4,8 @@ Compact, configureerbaar dashboard voor een bestaande self-hosted Umami-installa
 
 Er is **geen eigen database**. De API-key blijft op de server. Analytics worden alleen kort in het geheugen gecachet. Alleen weergavevoorkeuren (kolommen, compactheid, sortering en vastgezette applicaties) worden in de browser opgeslagen. De applicatie bevat geen eigen tracker en laadt geen externe fonts of scripts.
 
+Dit dashboard heeft **geen ingebouwde login**. Houd de toepassing achter Tailscale of een tunnel met toegangscontrole, ook als de broncode publiek beschikbaar is. Zie [SECURITY.md](SECURITY.md).
+
 ## Eerste keer starten
 
 Vereist: Docker Engine met Compose op een Linux-VM. De images gebruiken de goedgekeurde basis `node:26.13.1-bookworm-slim` en `nginx:1.30.8-alpine`.

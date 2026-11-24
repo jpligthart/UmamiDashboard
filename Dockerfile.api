@@ -14,7 +14,7 @@ RUN npm run build -w @dashboard/shared && npm run build -w @dashboard/api
 RUN npm prune --omit=dev --workspace @dashboard/api --workspace @dashboard/shared --include-workspace-root
 
 FROM node:26.13.1-bookworm-slim AS runner
-ARG IMAGE_SOURCE=https://example.invalid/umami-dashboard
+ARG IMAGE_SOURCE=https://github.com/jpligthart/UmamiDashboard
 ARG IMAGE_VERSION=0.1.0
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_CREATED=2026-11-24T00:00:00Z

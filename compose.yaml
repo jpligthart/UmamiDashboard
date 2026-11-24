@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
       args:
-        IMAGE_SOURCE: ${IMAGE_SOURCE:-https://example.invalid/umami-dashboard}
+        IMAGE_SOURCE: ${IMAGE_SOURCE:-https://github.com/jpligthart/UmamiDashboard}
         IMAGE_VERSION: ${IMAGE_TAG:-0.1.0}
         IMAGE_REVISION: ${IMAGE_REVISION:-unknown}
         IMAGE_CREATED: ${IMAGE_CREATED:-2026-11-24T00:00:00Z}
@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: Dockerfile.web
       args:
-        IMAGE_SOURCE: ${IMAGE_SOURCE:-https://example.invalid/umami-dashboard}
+        IMAGE_SOURCE: ${IMAGE_SOURCE:-https://github.com/jpligthart/UmamiDashboard}
         IMAGE_VERSION: ${IMAGE_TAG:-0.1.0}
         IMAGE_REVISION: ${IMAGE_REVISION:-unknown}
         IMAGE_CREATED: ${IMAGE_CREATED:-2026-11-24T00:00:00Z}
