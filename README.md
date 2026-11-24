@@ -161,6 +161,17 @@ npm run docker:push
 
 Het script bouwt `linux/amd64,linux/arm64`, zet OCI-labels en pusht beide images. Het leest alleen de `IMAGE_*`-instellingen uit `.env`; de Umami-key wordt niet als buildargument gebruikt.
 
+Om dezelfde images zowel met een versienummer als `latest` te publiceren, gebruik je:
+
+```dotenv
+IMAGE_TAG=0.1.0
+IMAGE_EXTRA_TAGS=latest
+```
+
+`IMAGE_TAG` blijft één tag en bepaalt ook het OCI-versielabel en de tag die Compose gebruikt. `IMAGE_EXTRA_TAGS` is alleen voor bouwen/pushen en mag meerdere kommagescheiden tags bevatten. Elke service wordt één keer gebouwd en met alle opgegeven tags gepusht. Zonder `IMAGE_EXTRA_TAGS` wordt alleen `IMAGE_TAG` gepubliceerd.
+
+Met `npm run docker:push -- --dry-run` bekijk je de Docker-opdrachten zonder iets te bouwen of te publiceren. Op de productie-VM kies je uitsluitend de gewenste `IMAGE_TAG`, bijvoorbeeld `0.1.0` voor een vaste versie of `latest` voor de laatst gepubliceerde versie.
+
 Op de VM heb je alleen deze bestanden nodig:
 
 ```text
