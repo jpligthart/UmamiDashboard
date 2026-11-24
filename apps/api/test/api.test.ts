@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { DateTime } from 'luxon';
 import { createApp } from '../src/server.js';
 import { configSchema } from '../src/config.js';
-import { normalizeCounts, range } from '../src/umami.js';
+import { normalizeCounts, range, Umami } from '../src/umami.js';
 
 const idA = '11111111-1111-4111-8111-111111111111';
 const idB = '22222222-2222-4222-8222-222222222222';
@@ -78,6 +78,12 @@ test('real HTTP adapter paginates, authenticates, filters sites, caches and stay
     assert.equal(Number(statQueries[1].get('startAt')), body.comparison.startAt);
     assert.equal(Number(statQueries[1].get('endAt')), body.comparison.endAt);
     assert.equal(body.comparison.endAt, body.startAt - 1);
+    const statsBeforeActive = requests.filter(p => p.includes('/stats?')).length;
+    const activity = await fetch(`${url}/api/active`).then(r => r.json());
+    assert.equal(activity.sites.length, 1);
+    assert.equal(activity.sites[0].id, idA);
+    assert.equal(activity.sites[0].active, 2);
+    assert.equal(requests.filter(p => p.includes('/stats?')).length, statsBeforeActive);
     assert.equal(requests.filter(p => p.startsWith('/api/websites?')).length, 2);
     const details = await fetch(`${url}/api/sites/${idA}/details?period=7d`).then(r => r.json());
     assert.equal(details.lists.length, 4); assert.equal(details.lists[0].rows[0].x, '/');
@@ -87,6 +93,31 @@ test('real HTTP adapter paginates, authenticates, filters sites, caches and stay
     assert.equal((await fetch(`${url}/api/dashboard?period=all`)).status, 400);
     assert.equal((await fetch(`${url}/api/proxy?url=https://example.com`)).status, 404);
     assert.equal(requests.length, before);
+  } finally { await close(app); await close(upstream); }
+});
+test('historical cache survives normal polling; manual refresh bypasses it after a shared guard', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-24T14:00:00Z') });
+  const upstream = createServer((req, res) => {
+    let value: unknown;
+    if (req.url!.startsWith('/api/websites?')) value = { data: [{ id: idA, name: 'App', domain: 'example.nl' }], count: 1, pageSize: 100 };
+    else if (req.url!.includes('/stats?')) value = counts;
+    else if (req.url!.endsWith('/active')) value = { visitors: 1 };
+    else value = { pageviews: [] };
+    res.end(JSON.stringify(value));
+  });
+  const app = createApp(configSchema.parse({}), { url: await listen(upstream), key: 'test-key' });
+  const url = await listen(app);
+  const overview = (fresh = false) => fetch(`${url}/api/dashboard?period=7d${fresh ? '&refresh=1' : ''}`).then(r => r.json());
+  try {
+    const first = await overview();
+    t.mock.timers.setTime(Date.now() + 31000);
+    assert.equal((await overview()).generatedAt, first.generatedAt);
+    const fresh = await overview(true);
+    assert.notEqual(fresh.generatedAt, first.generatedAt);
+    t.mock.timers.setTime(Date.now() + 1000);
+    assert.equal((await overview(true)).generatedAt, fresh.generatedAt);
+    t.mock.timers.setTime(Date.now() + 5000);
+    assert.notEqual((await overview(true)).generatedAt, fresh.generatedAt);
   } finally { await close(app); await close(upstream); }
 });
 test('partial upstream failure remains visible; upstream secrets never enter errors', async () => {
@@ -132,4 +163,20 @@ test('manual selection fetches only configured visible sites', async () => {
     const body = await fetch(`${await listen(app)}/api/dashboard`).then(r => r.json());
     assert.equal(body.sites.length, 1); assert.equal(body.sites[0].name, 'Handmatig');
   } finally { await close(app); await close(upstream); }
+});
+test('automatic application colors remain stable when discovery order changes', async () => {
+  let reversed = false;
+  const upstream = createServer((_req, res) => {
+    const data = [{ id: idA, name: 'A', domain: 'a.nl' }, { id: idB, name: 'B', domain: 'b.nl' }];
+    res.end(JSON.stringify({ data: reversed ? data.reverse() : data, count: 2, pageSize: 100 }));
+  });
+  const client = new Umami(await listen(upstream), 'test-key');
+  try {
+    const before = await client.sites(configSchema.parse({}));
+    reversed = true;
+    const after = await client.sites(configSchema.parse({}));
+    assert.deepEqual(after.map(s => [s.id, s.color]), before.map(s => [s.id, s.color]));
+    const custom = await client.sites(configSchema.parse({ sites: [{ id: idA, color: '#123456' }] }));
+    assert.equal(custom.find(s => s.id === idA)?.color, '#123456');
+  } finally { await close(upstream); }
 });

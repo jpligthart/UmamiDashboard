@@ -30,3 +30,7 @@ export interface Details {
   period: Period;
   lists: { type: 'path' | 'referrer' | 'event' | 'country'; label: string; rows: Point[] | null; error?: string }[];
 }
+export interface ActiveSnapshot {
+  generatedAt: string;
+  sites: { id: string; active: number | null; error?: string }[];
+}

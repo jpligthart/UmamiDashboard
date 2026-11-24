@@ -2,7 +2,7 @@
 
 Compact, configureerbaar dashboard voor een bestaande self-hosted Umami-installatie. React/TypeScript voor de interface, een kleine Node.js-API voor uitsluitend leesverzoeken naar Umami, en Docker Compose voor de VM.
 
-Er is **geen eigen database**. De API-key blijft op de server. Analytics worden alleen kort in het geheugen gecachet. Alleen kolomkeuze en compacte weergave worden in de browser opgeslagen. De applicatie bevat geen eigen tracker en laadt geen externe fonts of scripts.
+Er is **geen eigen database**. De API-key blijft op de server. Analytics worden alleen kort in het geheugen gecachet. Alleen weergavevoorkeuren (kolommen, compactheid, sortering en vastgezette applicaties) worden in de browser opgeslagen. De applicatie bevat geen eigen tracker en laadt geen externe fonts of scripts.
 
 ## Eerste keer starten
 
@@ -87,7 +87,11 @@ In het dashboard kun je de periode, groep, zoekfilter, zichtbare kolommen en com
 - Bezoekersaantallen en actieve bezoekers worden **per applicatie opgeteld**, zonder ontdubbeling tussen applicaties.
 - Bounce is `bounces / visits`; gemiddelde sessieduur is `totaltime / visits`.
 - Een mislukte meting wordt `—`, met een waarschuwing. Totalen geven aan wanneer ze gedeeltelijk zijn. Bij een mislukte verversing blijven de laatst opgehaalde cijfers herkenbaar met tijdstip en foutmelding.
-- Handmatig verversen gebruikt dezelfde korte servercache. Hiermee voorkomen we extra belasting door meerdere geopende tabbladen.
+- Sorteren kan via de kolomkoppen of de sorteerkeuze, ook op procentuele bezoekersverandering. Ontbrekende waarden staan onderaan. Vastgezette applicaties (ster) staan boven de overige applicaties en blijven binnen die groep sorteerbaar. De voorkeursvolgorde volgt de configuratie. Automatische kleuren zijn gekoppeld aan het applicatie-ID en veranderen niet als de API een andere volgorde teruggeeft; een expliciete kleur in de configuratie heeft voorrang.
+- ‘Vandaag’ ververst volgens `refreshSeconds` (standaard 60 seconden). Overzichten en details voor 7 en 30 dagen worden minimaal vijf minuten gecachet en de browser ververst het overzicht niet vaker dan elke vijf minuten. Actieve bezoekers worden daar apart opgehaald volgens `refreshSeconds`, zodat de historische grafieken niet steeds opnieuw worden opgevraagd. Op verborgen tabbladen stoppen automatische opvragen.
+- Met ‘Pauzeren’ zet je automatische updates stil. Handmatig verversen en een andere periode kiezen blijven werken. ‘Hervatten’ vraagt direct het overzicht opnieuw op. Geopende details blijven tijdens verversen zichtbaar; fouten laten herkenbaar de laatst opgehaalde details staan.
+- Handmatig verversen passeert de gewone cache na een gedeelde wachttijd van vijf seconden sinds de vorige opvraag. Gelijktijdige opvragen worden samengevoegd. Dit voorkomt een onbeperkte reeks nieuwe Umami-opvragen bij snel klikken of meerdere geopende tabbladen.
+- ‘Bezoeken’ correspondeert met Umami `visits` en is iets anders dan een Umami-sessie. Bouncepercentage en gemiddelde bezoekduur zijn niet van toepassing zonder bezoeken; de interface toont dan `—`. De uitklapbare uitleg onder de tabel beschrijft de meetdefinities en beperkingen.
 
 ## Privétoegang: Tailscale als eerste keuze
 

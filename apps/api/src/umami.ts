@@ -5,6 +5,11 @@ import { timeline, type AnalyticsRange } from './timeline.js';
 export { range, comparisonRange } from './timeline.js';
 
 export const palette = ['#87b9ff', '#a8d5a2', '#d8b4fe', '#f5bf7b', '#75d5cf'];
+export function siteColor(id: string): string {
+  let hash = 2166136261;
+  for (const char of id) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return palette[(hash >>> 0) % palette.length];
+}
 const website = z.object({ id: z.uuid(), name: z.string(), domain: z.string() });
 const point = z.object({ x: z.string().nullable(), y: z.coerce.number().finite().nonnegative() });
 export class UpstreamError extends Error {}
@@ -68,10 +73,10 @@ export class Umami {
     }
     const unique = [...new Map(found.map(s => [s.id, s])).values()];
     return unique.filter(s => !config.sites.find(o => o.id === s.id)?.hidden)
-      .map((s, i) => {
+      .map(s => {
         const override = config.sites.find(o => o.id === s.id);
         return { ...s, name: override?.name ?? s.name, domain: override?.domain ?? s.domain,
-          group: override?.group ?? 'Applicaties', color: override?.color ?? palette[i % palette.length] };
+          group: override?.group ?? 'Applicaties', color: override?.color ?? siteColor(s.id) };
       }).sort((a, b) => (config.sites.find(s => s.id === a.id)?.order ?? 100) -
         (config.sites.find(s => s.id === b.id)?.order ?? 100) || a.name.localeCompare(b.name, 'nl'));
   }
