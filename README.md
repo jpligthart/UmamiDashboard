@@ -181,11 +181,36 @@ umami-dashboard/
   config/dashboard.json
 ```
 
+Maak `config/dashboard.json` **vóór de eerste start als bestand** aan of kopieer het uit deze repository. Voor de standaardinstellingen met automatische applicatiedetectie is `{}` voldoende:
+
+```sh
+mkdir -p config
+# Alleen uitvoeren als het bestand nog niet bestaat:
+test -e config/dashboard.json || printf '%s\n' '{}' > config/dashboard.json
+test -f config/dashboard.json
+```
+
+De laatste controle moet slagen: een directory met de naam `dashboard.json` is geen geldig configuratiebestand. De compose gebruikt een bind mount met `create_host_path: false`, zodat een ontbrekend bronbestand niet automatisch als directory wordt aangemaakt.
+
 ```sh
 docker compose up -d
 ```
 
 De productiecompose bouwt niets en haalt de images op. Kopieer voor NPM desgewenst ook de netwerkoverlay en pas het pad in het commando aan. Gebruik dezelfde projectnaam en bestandenset bij volgende Compose-commando’s.
+
+### Fout: dashboard.json is een directory
+
+Een oudere compose met korte volumesyntax kan bij een ontbrekend configuratiebestand automatisch een directory `config/dashboard.json` hebben aangemaakt. Dat geeft bij starten de melding ‘not a directory’ of ‘Are you trying to mount a directory onto a file’.
+
+Vanuit de deploymap herstel je uitsluitend die lege directory en maak je het bestand aan:
+
+```sh
+sudo rmdir config/dashboard.json &&
+printf '%s\n' '{}' > config/dashboard.json &&
+docker compose up -d
+```
+
+`rmdir` weigert een niet-lege directory te verwijderen. Als dit commando weigert, inspecteer dan de inhoud voordat je verdergaat. Hiervoor hoeft geen nieuwe image te worden gebouwd. De webcontainer start nadat de API gezond is.
 
 ## Lokaal ontwikkelen en controleren
 
