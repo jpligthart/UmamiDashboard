@@ -27,10 +27,10 @@ test('normalizes v3 scalar and v2 nested stats without treating invalid data as 
   assert.throws(() => normalizeCounts({ visitors: 'unknown' }));
 });
 test('today and rolling calendar ranges respect Amsterdam DST', () => {
-  const today = range('today', 'Europe/Amsterdam', DateTime.fromISO('2026-03-29T12:00:00+02:00'));
+  const today = range('today', 'Europe/Amsterdam', DateTime.fromISO('2026-03-29T12:00:00+02:00') as DateTime<true>);
   assert.equal(new Date(today.startAt).toISOString(), '2026-03-28T23:00:00.000Z');
   assert.equal(today.endAt - today.startAt, 11 * 3600000);
-  const week = range('7d', 'Europe/Amsterdam', DateTime.fromISO('2026-03-30T12:00:00+02:00'));
+  const week = range('7d', 'Europe/Amsterdam', DateTime.fromISO('2026-03-30T12:00:00+02:00') as DateTime<true>);
   assert.equal(week.endAt - week.startAt, 167 * 3600000);
 });
 test('validates config and rejects duplicate or unsafe display values', () => {

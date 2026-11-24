@@ -1,3 +1,0 @@
-# Compatibility file for older deployments. No longer needed: the main
-# production compose creates and uses ./config/dashboard.json automatically.
-services: {}
