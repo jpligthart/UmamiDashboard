@@ -234,6 +234,15 @@ npm test
 npm run build
 ```
 
+Controleer een lokaal gebouwde API-image ook met het echte standaardcommando van de container:
+
+```sh
+docker build -f Dockerfile.api -t local/umami-dashboard-api:check .
+npm run docker:smoke -- local/umami-dashboard-api:check
+```
+
+Deze controle gebruikt demodata zonder API-key, zonder extern netwerk en zonder hostpoorten. Hij controleert de standaardstart via npm workspaces, de Docker-healthcheck en het dashboard-endpoint als niet-rootgebruiker. De tijdelijke container wordt na afloop verwijderd.
+
 De API-tests gebruiken een lokale nep-Umami-server voor authenticatie, paginering, caching, read-only gedrag, handmatige selectie, tijdzones en gedeeltelijke fouten. Ze gebruiken geen echte API-key.
 
 Structuur: `apps/api` bevat de configuratie, Umami-adapter en HTTP-routes; `apps/web` bevat de interface; `packages/shared` bevat gedeelde types; `deploy` bevat nginx en productiecompose. De API beperkt gelijktijdige upstreamverzoeken tot zes, gebruikt timeouts en volgt geen redirects met de key.

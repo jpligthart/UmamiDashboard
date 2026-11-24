@@ -12,7 +12,8 @@
     "test": "npm run build -w @dashboard/shared && npm run test -w @dashboard/api && node --import tsx --test apps/web/test/*.test.ts",
     "dev:api": "npm run build -w @dashboard/shared && npm run dev -w @dashboard/api",
     "dev:web": "npm run dev -w @dashboard/web",
-    "docker:push": "node scripts/docker-push.mjs"
+    "docker:push": "node scripts/docker-push.mjs",
+    "docker:smoke": "node scripts/docker-smoke.mjs"
   },
   "devDependencies": { "typescript": "^5.9.3", "@types/node": "^26.0.0" }
 }
