@@ -55,7 +55,7 @@ Voor voorbeeldgegevens zet je tijdelijk **expliciet** `DEMO_MODE=true` en voer j
 
 ## Applicaties en weergave
 
-`config/dashboard.json` bepaalt de standaardinstellingen en wordt bij het bouwen in de image opgenomen. Productie gebruikt standaard dit ingebouwde bestand: je hoeft op de VM geen configuratiebestand aan te maken. Voor lokale builds wordt het bestand uit de repository alleen-lezen gemount. Een eigen productieconfiguratie kun je optioneel mounten zoals hieronder beschreven. Na een wijziging in een gemount bestand: herstart de API met dezelfde Compose-bestanden als bij het starten.
+`config/dashboard.json` bepaalt de instellingen. De compose mount de hele configuratiemap en maakt het bestand bij de eerste start automatisch aan als het ontbreekt. Een bestaand, geldig bestand wordt altijd gebruikt en nooit overschreven. Na een wijziging: `docker compose restart api`. Je hebt hiervoor geen tweede composebestand nodig.
 
 Standaard haalt `discovery: "auto"` alle applicaties op die de API-key mag zien, inclusief teamapplicaties en volgende pagina’s. Nieuwe applicaties verschijnen bij een volgende verversing. Geef de eigenaar van de key dus ook toegang tot nieuwe applicaties.
 
@@ -184,45 +184,30 @@ umami-dashboard/
 docker compose up -d
 ```
 
-De standaardconfiguratie zit al in de API-image. De productiecompose mount daarom standaard geen hostbestand. De toepassing start meteen met automatische applicatiedetectie, tijdzone `Europe/Amsterdam` en de standaardkolommen. Er is geen initialisatiestap of schrijfbaar configuratievolume nodig.
+De compose maakt `./config/dashboard.json` automatisch aan bij de eerste start, met automatische applicatiedetectie, tijdzone `Europe/Amsterdam` en de standaardkolommen. Als het bestand al bestaat, wordt het gevalideerd en ongewijzigd behouden. Ook bij image-updates blijven je instellingen staan.
+
+Dit wordt uitgevoerd door `config-init`, een kortlevende container zonder netwerk of API-key. Alleen die container mag naar de configuratiemap schrijven. Daarna stopt hij en start de API als de niet-geprivilegieerde gebruiker `node`, met de configuratiemap alleen-lezen gemount. `config-init` met status `Exited (0)` is dus normaal. Als Docker de map zelf aanmaakt, zijn map en nieuw bestand doorgaans van root; bewerk het bestand op de VM dan met bijvoorbeeld `sudo nano config/dashboard.json`.
 
 De productiecompose bouwt niets en haalt de images op. Kopieer voor NPM desgewenst ook de netwerkoverlay en pas het pad in het commando aan. Gebruik dezelfde projectnaam en bestandenset bij volgende Compose-commando’s.
 
-### Optioneel: eigen configuratie op de VM
+### Eigen configuratie op de VM
 
-Wil je de titel, kolommen, applicatiegroepen of andere instellingen aanpassen? Kopieer dan ook `deploy/compose.config.yaml` naar de VM als `compose.config.yaml`, en maak `config/dashboard.json` als bestand aan. `{}` gebruikt de standaardinstellingen; gebruik voor eigen instellingen het voorbeeld uit ‘Applicaties en weergave’.
-
-```sh
-mkdir -p config
-# Alleen uitvoeren als het bestand nog niet bestaat:
-test -e config/dashboard.json || printf '%s\n' '{}' > config/dashboard.json
-test -f config/dashboard.json
-```
-
-De laatste controle moet slagen: een directory met de naam `dashboard.json` is geen geldig configuratiebestand. Alleen de optionele overlay gebruikt een bind mount, met `create_host_path: false`.
+Wil je de titel, kolommen, applicatiegroepen of andere instellingen aanpassen? Bewerk na de eerste start het automatisch aangemaakte `config/dashboard.json`, of zet je eigen bestand vooraf in de configuratiemap. Zie het voorbeeld onder ‘Applicaties en weergave’.
 
 ```sh
-docker compose -f compose.yaml -f compose.config.yaml up -d
-docker compose -f compose.yaml -f compose.config.yaml restart api
+sudo nano config/dashboard.json
+docker compose restart api
 ```
 
-Door de mount blijven je eigen instellingen behouden bij image-updates. Combineer deze overlay desgewenst met de NPM-overlay door beide bestanden aan het Compose-commando toe te voegen.
+Een tweede configuratie-YAML is niet meer nodig. `deploy/compose.config.yaml` blijft als lege compatibiliteitsoverlay bestaan voor oude commando’s, maar je kunt hem weglaten. De NPM-overlay blijft apart beschikbaar als je dat Docker-netwerk gebruikt.
 
 ### Fout: dashboard.json is een directory
 
 Een oudere compose met korte volumesyntax kan bij een ontbrekend configuratiebestand automatisch een directory `config/dashboard.json` hebben aangemaakt. Dat geeft bij starten de melding ‘not a directory’ of ‘Are you trying to mount a directory onto a file’.
 
-Met de huidige productiecompose is deze mount niet meer nodig. Vervang je productiecompose door de nieuwste `deploy/compose.prod.yaml` en voer `docker compose up -d` uit; de oude directory wordt dan niet meer gebruikt. Een nieuwe image bouwen is hiervoor niet nodig.
+De huidige `config-init` herstelt zo’n lege directory automatisch naar een configuratiebestand. Een niet-lege directory of een ongeldig bestaand JSON-bestand blijft intact en geeft een foutmelding; er worden geen instellingen gewist. Controleer dan `docker compose logs config-init`.
 
-Wil je juist een eigen hostconfiguratie gebruiken, herstel dan vanuit de deploymap uitsluitend die lege directory en maak het bestand aan:
-
-```sh
-sudo rmdir config/dashboard.json &&
-printf '%s\n' '{}' > config/dashboard.json &&
-docker compose -f compose.yaml -f compose.config.yaml up -d
-```
-
-`rmdir` weigert een niet-lege directory te verwijderen. Als dit commando weigert, inspecteer dan de inhoud voordat je verdergaat. Hiervoor hoeft geen nieuwe image te worden gebouwd. De webcontainer start nadat de API gezond is.
+Gebruik bij de overstap zowel de nieuwe productiecompose als een opnieuw gebouwde API-image: oudere images bevatten `init-config.js` nog niet. Bouw/publiceer de nieuwe images en voer daarna op de VM `docker compose up -d` uit. De webcontainer start nadat de API gezond is.
 
 ## Lokaal ontwikkelen en controleren
 
