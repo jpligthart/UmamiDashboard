@@ -1,0 +1,11 @@
+# Optional custom configuration, copied next to the production compose.yaml.
+# docker compose -f compose.yaml -f compose.config.yaml up -d
+services:
+  api:
+    volumes:
+      - type: bind
+        source: ./config/dashboard.json
+        target: /app/config/dashboard.json
+        read_only: true
+        bind:
+          create_host_path: false

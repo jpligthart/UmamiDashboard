@@ -55,7 +55,7 @@ Voor voorbeeldgegevens zet je tijdelijk **expliciet** `DEMO_MODE=true` en voer j
 
 ## Applicaties en weergave
 
-`config/dashboard.json` bepaalt de standaardinstellingen. Het bestand is alleen-lezen gemount. Na een configuratiewijziging: `docker compose restart api`.
+`config/dashboard.json` bepaalt de standaardinstellingen en wordt bij het bouwen in de image opgenomen. Productie gebruikt standaard dit ingebouwde bestand: je hoeft op de VM geen configuratiebestand aan te maken. Voor lokale builds wordt het bestand uit de repository alleen-lezen gemount. Een eigen productieconfiguratie kun je optioneel mounten zoals hieronder beschreven. Na een wijziging in een gemount bestand: herstart de API met dezelfde Compose-bestanden als bij het starten.
 
 Standaard haalt `discovery: "auto"` alle applicaties op die de API-key mag zien, inclusief teamapplicaties en volgende pagina’s. Nieuwe applicaties verschijnen bij een volgende verversing. Geef de eigenaar van de key dus ook toegang tot nieuwe applicaties.
 
@@ -178,10 +178,19 @@ Op de VM heb je alleen deze bestanden nodig:
 umami-dashboard/
   compose.yaml            # kopie van deploy/compose.prod.yaml
   .env                    # runtimecredentials en IMAGE_REGISTRY/IMAGE_TAG
-  config/dashboard.json
 ```
 
-Maak `config/dashboard.json` **vóór de eerste start als bestand** aan of kopieer het uit deze repository. Voor de standaardinstellingen met automatische applicatiedetectie is `{}` voldoende:
+```sh
+docker compose up -d
+```
+
+De standaardconfiguratie zit al in de API-image. De productiecompose mount daarom standaard geen hostbestand. De toepassing start meteen met automatische applicatiedetectie, tijdzone `Europe/Amsterdam` en de standaardkolommen. Er is geen initialisatiestap of schrijfbaar configuratievolume nodig.
+
+De productiecompose bouwt niets en haalt de images op. Kopieer voor NPM desgewenst ook de netwerkoverlay en pas het pad in het commando aan. Gebruik dezelfde projectnaam en bestandenset bij volgende Compose-commando’s.
+
+### Optioneel: eigen configuratie op de VM
+
+Wil je de titel, kolommen, applicatiegroepen of andere instellingen aanpassen? Kopieer dan ook `deploy/compose.config.yaml` naar de VM als `compose.config.yaml`, en maak `config/dashboard.json` als bestand aan. `{}` gebruikt de standaardinstellingen; gebruik voor eigen instellingen het voorbeeld uit ‘Applicaties en weergave’.
 
 ```sh
 mkdir -p config
@@ -190,24 +199,27 @@ test -e config/dashboard.json || printf '%s\n' '{}' > config/dashboard.json
 test -f config/dashboard.json
 ```
 
-De laatste controle moet slagen: een directory met de naam `dashboard.json` is geen geldig configuratiebestand. De compose gebruikt een bind mount met `create_host_path: false`, zodat een ontbrekend bronbestand niet automatisch als directory wordt aangemaakt.
+De laatste controle moet slagen: een directory met de naam `dashboard.json` is geen geldig configuratiebestand. Alleen de optionele overlay gebruikt een bind mount, met `create_host_path: false`.
 
 ```sh
-docker compose up -d
+docker compose -f compose.yaml -f compose.config.yaml up -d
+docker compose -f compose.yaml -f compose.config.yaml restart api
 ```
 
-De productiecompose bouwt niets en haalt de images op. Kopieer voor NPM desgewenst ook de netwerkoverlay en pas het pad in het commando aan. Gebruik dezelfde projectnaam en bestandenset bij volgende Compose-commando’s.
+Door de mount blijven je eigen instellingen behouden bij image-updates. Combineer deze overlay desgewenst met de NPM-overlay door beide bestanden aan het Compose-commando toe te voegen.
 
 ### Fout: dashboard.json is een directory
 
 Een oudere compose met korte volumesyntax kan bij een ontbrekend configuratiebestand automatisch een directory `config/dashboard.json` hebben aangemaakt. Dat geeft bij starten de melding ‘not a directory’ of ‘Are you trying to mount a directory onto a file’.
 
-Vanuit de deploymap herstel je uitsluitend die lege directory en maak je het bestand aan:
+Met de huidige productiecompose is deze mount niet meer nodig. Vervang je productiecompose door de nieuwste `deploy/compose.prod.yaml` en voer `docker compose up -d` uit; de oude directory wordt dan niet meer gebruikt. Een nieuwe image bouwen is hiervoor niet nodig.
+
+Wil je juist een eigen hostconfiguratie gebruiken, herstel dan vanuit de deploymap uitsluitend die lege directory en maak het bestand aan:
 
 ```sh
 sudo rmdir config/dashboard.json &&
 printf '%s\n' '{}' > config/dashboard.json &&
-docker compose up -d
+docker compose -f compose.yaml -f compose.config.yaml up -d
 ```
 
 `rmdir` weigert een niet-lege directory te verwijderen. Als dit commando weigert, inspecteer dan de inhoud voordat je verdergaat. Hiervoor hoeft geen nieuwe image te worden gebouwd. De webcontainer start nadat de API gezond is.

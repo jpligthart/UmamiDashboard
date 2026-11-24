@@ -1,4 +1,6 @@
-# Copy this file to the VM as compose.yaml, next to .env and config/.
+# Copy this file to the VM as compose.yaml, next to .env.
+# Uses the default dashboard config included in the image.
+# Optional host config: add compose.config.yaml as a second Compose file.
 name: umami-dashboard
 services:
   api:
@@ -10,13 +12,6 @@ services:
       PORT: "3000"
       DASHBOARD_CONFIG: /app/config/dashboard.json
     expose: ["3000"]
-    volumes:
-      - type: bind
-        source: ./config/dashboard.json
-        target: /app/config/dashboard.json
-        read_only: true
-        bind:
-          create_host_path: false
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
