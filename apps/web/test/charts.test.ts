@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { SiteRow, TimePoint } from '@dashboard/shared';
 import { timePosition, sparkPaths } from '../src/chart-model';
 import { Chart, Sparkline } from '../src/Charts';
-import { App, Comparison } from '../src/App';
+import { App, Comparison, SiteDetail } from '../src/App';
 
 const points: TimePoint[] = [
   { at: 0, endAt: 999, y: 8, label: 'Eerste tijdvak' },
@@ -43,4 +43,14 @@ test('overview starts compact with the details closed', () => {
   const markup = renderToStaticMarkup(createElement(App));
   assert.match(markup, /summary-strip/);
   assert.doesNotMatch(markup, /id="application-details"/);
+});
+test('site detail shows the figures of that one application with comparison', () => {
+  const site = { id: 'a', name: 'Testapp', domain: 'test.nl', group: 'Apps', color: '#87b9ff', active: 3, trend: points, warnings: [],
+    stats: { visitors: 12, pageviews: 30, visits: 10, bounces: 4, totaltime: 600 }, previous: { visitors: 8, pageviews: 30, visits: 8, bounces: 2, totaltime: 400 } } as SiteRow;
+  const markup = renderToStaticMarkup(createElement(SiteDetail, { site, timezone: 'Europe/Amsterdam', period: 'today', details: null, detailError: '' }));
+  assert.match(markup, /id="application-details"/);
+  assert.match(markup, /site-summary/);
+  assert.match(markup, /\+50,0%/);
+  assert.match(markup, /40%/);
+  assert.match(markup, /Details ophalen/);
 });

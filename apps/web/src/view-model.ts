@@ -54,3 +54,10 @@ export function sortedSites(sites: SiteRow[], prefs: Preferences): SiteRow[] {
 export function refreshIntervals(period: Period, seconds: number) {
   return { overview: period === 'today' ? seconds : Math.max(300, seconds), active: seconds };
 }
+/** Detail route: `#/app/<id>` opens one application; anything else is the overview. */
+export function siteFromHash(hash: string): string {
+  const match = /^#\/app\/([^/?#]+)$/.exec(hash);
+  if (!match) return '';
+  try { return decodeURIComponent(match[1]); } catch { return ''; }
+}
+export const hashForSite = (id: string) => `#/app/${encodeURIComponent(id)}`;

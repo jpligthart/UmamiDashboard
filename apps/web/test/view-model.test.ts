@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { SiteRow } from '@dashboard/shared';
-import { parsePreferences, refreshIntervals, sortedSites } from '../src/view-model';
+import { hashForSite, parsePreferences, refreshIntervals, siteFromHash, sortedSites } from '../src/view-model';
 
 const site = (id: string, visitors: number | null, previous = 5): SiteRow => ({
   id, name: id, domain: 'example.nl', color: '#87b9ff', group: 'Apps', active: 0, trend: [], warnings: [],
@@ -33,4 +33,11 @@ test('historical overview updates less often than live activity without shorteni
   assert.deepEqual(refreshIntervals('today', 60), { overview: 60, active: 60 });
   assert.deepEqual(refreshIntervals('7d', 60), { overview: 300, active: 60 });
   assert.deepEqual(refreshIntervals('30d', 600), { overview: 600, active: 600 });
+});
+test('detail route round-trips application ids and ignores other hashes', () => {
+  for (const id of ['abc-123', 'met spatie', 'a/b']) assert.equal(siteFromHash(hashForSite(id)), id);
+  assert.equal(siteFromHash(''), '');
+  assert.equal(siteFromHash('#/app/'), '');
+  assert.equal(siteFromHash('#/app/%E0%A4%A'), '');
+  assert.equal(siteFromHash('#metric-help'), '');
 });
